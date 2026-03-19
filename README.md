@@ -57,3 +57,80 @@ A live public deployment of this template is available at [https://d1-template.t
    ```bash
    npx wrangler deploy
    ```
+
+## Token API
+
+This Worker now exposes a small token storage API backed by D1. The token payload uses these fields:
+
+```json
+{
+  "id_token": "wZMKVHVp40iJhwNm2xzn_Y3Z6naSkDWMrkQapxkDQw",
+  "access_token": "QqJfz1vESKUu9H0IOpxsEbr5DxcBs5AWWTTCd54Wn8cSyBRyPWmrL9OY3t7IGNR1dp7MeSE",
+  "refresh_token": "rt_qdx0MbDxq---",
+  "account_id": "19648e17-f567-4507-85bf-2cba128c6e53",
+  "last_refresh": "2026-03-19T09:49:07Z",
+  "email": "bette3bb803@qii.leadharbor.org",
+  "type": "codex",
+  "expired": "2026-03-29T09:49:06Z"
+}
+```
+
+When running locally with `npx wrangler dev`, you can call the API like this:
+
+### Create or update a token
+
+```bash
+curl -X POST http://127.0.0.1:8787/tokens \
+  -H "content-type: application/json" \
+  -d '{
+    "id_token": "wZMKVHVp40iJhwNm2xzn_Y3Z6naSkDWMrkQapxkDQw",
+    "access_token": "QqJfz1vESKUu9H0IOpxsEbr5DxcBs5AWWTTCd54Wn8cSyBRyPWmrL9OY3t7IGNR1dp7MeSE",
+    "refresh_token": "rt_qdx0MbDxq---",
+    "account_id": "19648e17-f567-4507-85bf-2cba128c6e53",
+    "last_refresh": "2026-03-19T09:49:07Z",
+    "email": "bette3bb803@qii.leadharbor.org",
+    "type": "codex",
+    "expired": "2026-03-29T09:49:06Z"
+  }'
+```
+
+This returns the stored token object with HTTP `201`.
+
+### List all tokens
+
+```bash
+curl http://127.0.0.1:8787/tokens
+```
+
+This returns a JSON array of stored token objects.
+
+### Read one token by account ID
+
+```bash
+curl "http://127.0.0.1:8787/tokens?account_id=19648e17-f567-4507-85bf-2cba128c6e53"
+```
+
+This returns the matching token object, or:
+
+```json
+{ "error": "Token not found." }
+```
+
+with HTTP `404` if no matching row exists.
+
+### Delete one token by account ID
+
+```bash
+curl -X DELETE "http://127.0.0.1:8787/tokens?account_id=19648e17-f567-4507-85bf-2cba128c6e53"
+```
+
+This returns:
+
+```json
+{
+  "deleted": true,
+  "account_id": "19648e17-f567-4507-85bf-2cba128c6e53"
+}
+```
+
+If `account_id` is missing, the API returns HTTP `400`. If the token does not exist, it returns HTTP `404`.
