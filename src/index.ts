@@ -28,7 +28,7 @@ export default {
 			}
 
 			await env.DB.prepare(
-				`INSERT INTO tokens (
+				`INSERT INTO accounts (
 					id_token,
 					access_token,
 					refresh_token,
@@ -76,7 +76,7 @@ export default {
 						email,
 						type,
 						expired
-					FROM tokens`,
+					FROM accounts`,
 				).all();
 
 				const tokens = results.filter(isToken);
@@ -94,7 +94,7 @@ export default {
 					email,
 					type,
 					expired
-				FROM tokens
+				FROM accounts
 				WHERE account_id = ?`,
 			)
 				.bind(accountId)
@@ -119,7 +119,7 @@ export default {
 
 			const existingToken = await env.DB.prepare(
 				`SELECT account_id
-				FROM tokens
+				FROM accounts
 				WHERE account_id = ?`,
 			)
 				.bind(accountId)
@@ -130,7 +130,7 @@ export default {
 			}
 
 			await env.DB.prepare(
-				`DELETE FROM tokens
+				`DELETE FROM accounts
 				WHERE account_id = ?`,
 			)
 				.bind(accountId)
@@ -143,7 +143,7 @@ export default {
 			return json({ error: "Not found." }, { status: 404 });
 		}
 
-		const stmt = env.DB.prepare("SELECT * FROM comments LIMIT 3");
+		const stmt = env.DB.prepare("SELECT * FROM accounts LIMIT 3");
 		const { results } = await stmt.all();
 
 		return new Response(renderHtml(JSON.stringify(results, null, 2)), {

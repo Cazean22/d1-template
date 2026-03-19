@@ -6,21 +6,19 @@
 
 <!-- dash-content-start -->
 
-D1 is Cloudflare's native serverless SQL database ([docs](https://developers.cloudflare.com/d1/)). This project demonstrates using a Worker with a D1 binding to execute a SQL statement. A simple frontend displays the result of this query:
+D1 is Cloudflare's native serverless SQL database ([docs](https://developers.cloudflare.com/d1/)). This project demonstrates using a Worker with a D1 binding to store and read account-backed token records. The homepage displays the result of this query:
 
 ```SQL
-SELECT * FROM comments LIMIT 3;
+SELECT * FROM accounts LIMIT 3;
 ```
 
-The D1 database is initialized with a `comments` table and this data:
+The Worker also exposes a token API for creating, listing, reading, and deleting token records:
 
 ```SQL
-INSERT INTO comments (author, content)
-VALUES
-    ('Kristian', 'Congrats!'),
-    ('Serena', 'Great job!'),
-    ('Max', 'Keep up the good work!')
-;
+POST /tokens
+GET /tokens
+GET /tokens?account_id=...
+DELETE /tokens?account_id=...
 ```
 
 > [!IMPORTANT]
@@ -60,7 +58,7 @@ A live public deployment of this template is available at [https://d1-template.t
 
 ## Token API
 
-This Worker now exposes a small token storage API backed by D1. The token payload uses these fields:
+This Worker now exposes a small token storage API backed by the `accounts` table in D1. The token payload uses these fields:
 
 ```json
 {
