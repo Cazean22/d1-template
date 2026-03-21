@@ -107,6 +107,52 @@ export default {
 			return json(result);
 		}
 
+		if (url.pathname === "/tokens/random" && request.method === "GET") {
+			const limitParam = url.searchParams.get("limit");
+			let limit = 100;
+
+			if (limitParam !== null) {
+				if (!/^\d+$/.test(limitParam)) {
+					return json(
+						{ error: "Query parameter 'limit' must be a positive base-10 integer." },
+						{ status: 400 },
+					);
+				}
+
+				const parsedLimit = Number(limitParam);
+
+				if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
+					return json(
+						{ error: "Query parameter 'limit' must be a positive base-10 integer." },
+						{ status: 400 },
+					);
+				}
+
+				limit = Math.min(parsedLimit, 100);
+			}
+
+			const { results } = await env.DB.prepare(
+				`SELECT
+					id_token,
+					access_token,
+					refresh_token,
+					account_id,
+					last_refresh,
+					email,
+					type,
+					expired
+				FROM accounts
+				ORDER BY RANDOM()
+				LIMIT ?`,
+			)
+				.bind(limit)
+				.all();
+
+			const tokens = results.filter(isToken);
+
+			return json(tokens);
+		}
+
 		if (url.pathname === "/tokens" && request.method === "DELETE") {
 			const accountId = url.searchParams.get("account_id");
 

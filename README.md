@@ -17,6 +17,7 @@ The Worker also exposes a token API for creating, listing, reading, and deleting
 ```SQL
 POST /tokens
 GET /tokens
+GET /tokens/random
 GET /tokens?account_id=...
 DELETE /tokens?account_id=...
 ```
@@ -101,6 +102,22 @@ curl http://127.0.0.1:8787/tokens
 ```
 
 This returns a JSON array of stored token objects.
+
+### List random tokens
+
+```bash
+curl http://127.0.0.1:8787/tokens/random
+```
+
+This returns a JSON array containing up to 100 randomly selected token objects.
+
+You can request a smaller result set with the optional `limit` query parameter:
+
+```bash
+curl "http://127.0.0.1:8787/tokens/random?limit=20"
+```
+
+`limit` must be a positive base-10 integer. Values greater than `100` are capped at `100`.
 
 ### Read one token by account ID
 
