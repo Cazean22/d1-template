@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { renderHtml } from "./renderHtml";
-import { isToken, parseToken } from "./token";
+import { isToken, parseToken, TokenUpdateSchema } from "./token";
 
 function json(data: unknown, init?: ResponseInit) {
 	return Response.json(data, init);
@@ -107,29 +108,52 @@ export default {
 			return json(result);
 		}
 
-		if (url.pathname === "/tokens/random" && request.method === "GET") {
-			const limitParam = url.searchParams.get("limit");
-			let limit = 100;
+		if (url.pathname === "/tokens/search" && request.method === "GET") {
+			const SearchParams = z.object({
+				account_id: z.string().min(1),
+			});
 
-			if (limitParam !== null) {
-				if (!/^\d+$/.test(limitParam)) {
-					return json(
-						{ error: "Query parameter 'limit' must be a positive base-10 integer." },
-						{ status: 400 },
-					);
-				}
+			const parsed = SearchParams.safeParse(Object.fromEntries(url.searchParams));
 
-				const parsedLimit = Number(limitParam);
-
-				if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
-					return json(
-						{ error: "Query parameter 'limit' must be a positive base-10 integer." },
-						{ status: 400 },
-					);
-				}
-
-				limit = Math.min(parsedLimit, 100);
+			if (!parsed.success) {
+				return json({ error: z.prettifyError(parsed.error) }, { status: 400 });
 			}
+
+			const { account_id: accountId } = parsed.data;
+
+			const { results } = await env.DB.prepare(
+				`SELECT
+					id_token,
+					access_token,
+					refresh_token,
+					account_id,
+					last_refresh,
+					email,
+					type,
+					expired
+				FROM accounts
+				WHERE account_id LIKE ?`,
+			)
+				.bind(`%${accountId}%`)
+				.all();
+
+			const tokens = results.filter(isToken);
+
+			return json(tokens);
+		}
+
+		if (url.pathname === "/tokens/random" && request.method === "GET") {
+			const RandomParams = z.object({
+				limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+			});
+
+			const parsed = RandomParams.safeParse(Object.fromEntries(url.searchParams));
+
+			if (!parsed.success) {
+				return json({ error: z.prettifyError(parsed.error) }, { status: 400 });
+			}
+
+			const limit = parsed.data.limit;
 
 			const { results } = await env.DB.prepare(
 				`SELECT
@@ -153,7 +177,7 @@ export default {
 			return json(tokens);
 		}
 
-		if (url.pathname === "/tokens" && request.method === "DELETE") {
+		if (url.pathname === "/tokens" && request.method === "PATCH") {
 			const accountId = url.searchParams.get("account_id");
 
 			if (!accountId) {
@@ -162,6 +186,68 @@ export default {
 					{ status: 400 },
 				);
 			}
+
+			let requestBody: unknown;
+
+			try {
+				requestBody = await request.json();
+			} catch {
+				return json(
+					{ error: "Request body must be valid JSON." },
+					{ status: 400 },
+				);
+			}
+
+			const parsed = TokenUpdateSchema.safeParse(requestBody);
+
+			if (!parsed.success) {
+				return json({ error: z.prettifyError(parsed.error) }, { status: 400 });
+			}
+
+			const fields = parsed.data;
+			const setClauses = Object.keys(fields).map((key) => `${key} = ?`);
+			const values = Object.values(fields);
+
+			const existing = await env.DB.prepare(
+				`SELECT account_id FROM accounts WHERE account_id = ?`,
+			)
+				.bind(accountId)
+				.first();
+
+			if (!existing) {
+				return json({ error: "Token not found." }, { status: 404 });
+			}
+
+			await env.DB.prepare(
+				`UPDATE accounts SET ${setClauses.join(", ")} WHERE account_id = ?`,
+			)
+				.bind(...values, accountId)
+				.run();
+
+			const updated = await env.DB.prepare(
+				`SELECT
+					id_token, access_token, refresh_token, account_id,
+					last_refresh, email, type, expired
+				FROM accounts WHERE account_id = ?`,
+			)
+				.bind(accountId)
+				.first();
+
+			return json(updated);
+		}
+
+		if (url.pathname === "/tokens" && request.method === "DELETE") {
+			const DeleteParams = z.object({
+				account_id: z.string().min(1),
+			});
+
+			const parsed = DeleteParams.safeParse(Object.fromEntries(url.searchParams));
+
+			if (!parsed.success) {
+				return json({ error: z.prettifyError(parsed.error) }, { status: 400 });
+			}
+
+			const accountId = parsed.data.account_id;
 
 			const existingToken = await env.DB.prepare(
 				`SELECT account_id

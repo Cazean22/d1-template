@@ -12,13 +12,15 @@ D1 is Cloudflare's native serverless SQL database ([docs](https://developers.clo
 SELECT * FROM accounts LIMIT 3;
 ```
 
-The Worker also exposes a token API for creating, listing, reading, and deleting token records:
+The Worker also exposes a token API for creating, listing, searching, updating, and deleting token records:
 
 ```SQL
 POST /tokens
 GET /tokens
-GET /tokens/random
 GET /tokens?account_id=...
+GET /tokens/search?account_id=...
+GET /tokens/random
+PATCH /tokens?account_id=...
 DELETE /tokens?account_id=...
 ```
 
@@ -132,6 +134,27 @@ This returns the matching token object, or:
 ```
 
 with HTTP `404` if no matching row exists.
+
+### Search tokens by account ID
+
+```bash
+curl "http://127.0.0.1:8787/tokens/search?account_id=19648e17"
+```
+
+This performs a partial match (`LIKE %query%`) on `account_id` and returns a JSON array of all matching tokens.
+
+### Update a token
+
+```bash
+curl -X PATCH "http://127.0.0.1:8787/tokens?account_id=19648e17-f567-4507-85bf-2cba128c6e53" \
+  -H "content-type: application/json" \
+  -d '{
+    "email": "new@example.com",
+    "expired": "2026-06-01T00:00:00Z"
+  }'
+```
+
+This partially updates the token identified by `account_id`. Only the provided fields are updated — all other fields remain unchanged. At least one field must be provided. Returns the updated token object, or HTTP `404` if the token does not exist.
 
 ### Delete one token by account ID
 
